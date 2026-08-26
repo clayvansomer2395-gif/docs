@@ -505,7 +505,24 @@ describe('correctTranslatedContentStrings', () => {
 
     test('fixes dados variáveis → data variables', () => {
       expect(fix('{% dados variáveis.produto.prodname_pro %}', 'pt')).toBe(
-        '{% data variables.produto.prodname_pro %}',
+        '{% data variables.product.prodname_pro %}',
+      )
+    })
+
+    test('fixes translated produto path segment inside variables.', () => {
+      expect(fix('{% data variáveis.produto.prodname_ghe_cloud %}', 'pt')).toBe(
+        '{% data variables.product.prodname_ghe_cloud %}',
+      )
+      expect(fix('{% data variables.produto.prodname_github_codespaces %}', 'pt')).toBe(
+        '{% data variables.product.prodname_github_codespaces %}',
+      )
+      // Already-correct input is left unchanged.
+      expect(fix('{% data variables.product.prodname_pro %}', 'pt')).toBe(
+        '{% data variables.product.prodname_pro %}',
+      )
+      // Prose outside a Liquid `data` tag is left unchanged.
+      expect(fix('Veja myvariables.produto.exemplo para detalhes.', 'pt')).toBe(
+        'Veja myvariables.produto.exemplo para detalhes.',
       )
     })
 
@@ -605,6 +622,12 @@ describe('correctTranslatedContentStrings', () => {
     test('fixes 行标题 → rowheaders', () => {
       expect(fix('{% 行标题 %}', 'zh')).toBe('{% rowheaders %}')
       expect(fix('{%- 行标题 %}', 'zh')).toBe('{%- rowheaders %}')
+    })
+
+    test('fixes 结束表头列 → endrowheaders', () => {
+      expect(fix('{% 结束表头列 %}', 'zh')).toBe('{% endrowheaders %}')
+      expect(fix('{%- 结束表头列 %}', 'zh')).toBe('{%- endrowheaders %}')
+      expect(fix('{% endrowheaders %}', 'zh')).toBe('{% endrowheaders %}')
     })
 
     test('fixes 数据变量 → data variables', () => {
@@ -1645,6 +1668,27 @@ describe('correctTranslatedContentStrings', () => {
         '{%- data variables.product.github %}',
       )
       expect(fix('{% data .reusables.foo.bar %}', 'zh')).toBe('{% data reusables.foo.bar %}')
+    })
+
+    test('fixes stray space after a dot inside {% data variables/reusables paths', () => {
+      // Translators sometimes inserted a stray space right after a dot in a
+      // multi-segment `variables.X.Y` / `reusables.X.Y` path (e.g. wrapping
+      // long lines mid-path). Liquid parses the space as ending the variable
+      // lookup early, breaking the tag. Confirmed in de-de, ja-jp, ru-ru.
+      expect(fix('{% data variables.product. prodname_pages %}', 'de')).toBe(
+        '{% data variables.product.prodname_pages %}',
+      )
+      expect(fix('{% data variables. product.prodname_pro %}', 'ja')).toBe(
+        '{% data variables.product.prodname_pro %}',
+      )
+      expect(fix('{% data variables.copilot. copilot_chat_short %}', 'ru')).toBe(
+        '{% data variables.copilot.copilot_chat_short %}',
+      )
+      expect(fix('{%- data reusables.foo. bar -%}', 'de')).toBe('{%- data reusables.foo.bar -%}')
+      // Already-correct input is left unchanged.
+      expect(fix('{% data variables.product.prodname_pages %}', 'de')).toBe(
+        '{% data variables.product.prodname_pages %}',
+      )
     })
 
     test('fixes singular variable / reusable in {% data paths', () => {

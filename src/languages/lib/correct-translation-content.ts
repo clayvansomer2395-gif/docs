@@ -58,6 +58,17 @@ export function correctTranslatedContentStrings(
     '{%$1 data variables.$2$3',
   )
 
+  // Translators sometimes inserted a stray space right after a dot inside
+  // a `{% data variables.X.Y %}` path (e.g. `{% data variables.product.
+  // prodname_pages %}` or `{% data variables. product.prodname_pages %}`).
+  // Liquid parses the space as ending the variable lookup early, breaking
+  // the tag. Collapse the space back out. The English source never has
+  // a space after a dot in a variable path, so this is safe globally.
+  content = content.replace(
+    /\{%(-?)\s*data\s+(?:variables|reusables)(?:\.\s*[A-Za-z0-9_-]+)+(?=\s*-?%\})/g,
+    (path) => path.replace(/\.\s+/g, '.'),
+  )
+
   // The translation pipeline frequently splits Markdown bullet markers
   // (`*` and `-`) and table-cell pipes (`|`) onto their own line, with
   // the actual content pushed to the next line as deeply indented text.
@@ -635,6 +646,14 @@ export function correctTranslatedContentStrings(
     content = content.replaceAll('{% variáveis de dados ', '{% data variables ')
     // `{% dados variáveis.` — alternate word order "data variables"
     content = content.replaceAll('{% dados variáveis.', '{% data variables.')
+    // `{% data variables.produto.X %}` — translated `product` path segment inside a
+    // `data` tag's variable path. Scoped to the tag prefix so prose, URLs, and code
+    // samples containing these words aren't rewritten. Must run after the
+    // `dados variáveis.` → `data variables.` fix above.
+    content = content.replace(
+      /(\{%-?\s*data\s+)(?:variables|variáveis)\.produto\./g,
+      '$1variables.product.',
+    )
     // `{% Espaços de Código %}` / `{% espaços de código %}` — "Code Spaces" = codespaces
     content = content.replaceAll('{% Espaços de Código %}', '{% codespaces %}')
     content = content.replaceAll('{%- Espaços de Código %}', '{%- codespaces %}')
@@ -872,6 +891,12 @@ export function correctTranslatedContentStrings(
     // `{% 行标题结束 %}` — order swap (rowheaders + end)
     content = content.replaceAll('{% 行标题结束 %}', '{% endrowheaders %}')
     content = content.replaceAll('{%- 行标题结束 %}', '{%- endrowheaders %}')
+    // `{% 结束表头列 %}` — "end table header column" = endrowheaders. Found in
+    // codeql-query-tables reusables (python/rust/java/go/ruby/javascript), where
+    // the opener `{% rowheaders %}` was correctly left in English but the closer
+    // was translated, leaving the tag unclosed and breaking table rendering.
+    content = content.replaceAll('{% 结束表头列 %}', '{% endrowheaders %}')
+    content = content.replaceAll('{%- 结束表头列 %}', '{%- endrowheaders %}')
     // Capitalized `{% Variables.X %}` / `{% Reusables.X %}` — translator title-cased
     content = content.replaceAll('{% data Variables.', '{% data variables.')
     content = content.replaceAll('{% data Reusables.', '{% data reusables.')
